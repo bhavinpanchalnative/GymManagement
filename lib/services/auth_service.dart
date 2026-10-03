@@ -269,14 +269,37 @@ class AuthService {
     }
   }
 
-  /// Send password reset link to user's email.
+  /// Requests a reset link without revealing whether the account exists.
   Future<void> sendPasswordResetEmail({required String email}) async {
     try {
       await _requireAuth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      // Match projects with email enumeration protection enabled, which already
+      // complete successfully for unknown accounts without sending an email.
+      if (e.code == 'user-not-found') return;
+      debugPrint('AuthService.sendPasswordResetEmail error: $e');
+      rethrow;
     } catch (e) {
       debugPrint('AuthService.sendPasswordResetEmail error: $e');
       rethrow;
     }
+  }
+
+  /// Messages specific to password reset, without exposing configuration details.
+  String getPasswordResetErrorMessage(Object error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+        case 'user-disabled':
+        case 'too-many-requests':
+        case 'network-request-failed':
+          return getReadableErrorMessage(error);
+        case 'invalid-api-key':
+        case 'operation-not-allowed':
+          return 'Password reset is unavailable right now. Please contact support.';
+      }
+    }
+    return 'Unable to send reset instructions. Please try again later.';
   }
 
   /// Sign out the current user.

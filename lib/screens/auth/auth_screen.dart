@@ -3,6 +3,7 @@ import '../../models/gym_settings.dart';
 import '../../services/auth_service.dart';
 import '../../services/gym_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/email_validator.dart';
 import '../../widgets/gym_logo_widget.dart';
 import 'forgot_password_sheet.dart';
 
@@ -260,7 +261,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   if (val == null || val.trim().isEmpty) {
                     return 'Please enter your email';
                   }
-                  if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(val.trim())) {
+                  if (!isValidEmailAddress(val)) {
                     return 'Please enter a valid email address';
                   }
                   return null;
@@ -451,7 +452,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   if (val == null || val.trim().isEmpty) {
                     return 'Please enter your email';
                   }
-                  if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(val.trim())) {
+                  if (!isValidEmailAddress(val)) {
                     return 'Please enter a valid email address';
                   }
                   return null;

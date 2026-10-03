@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/email_validator.dart';
 
 class ForgotPasswordSheet extends StatefulWidget {
   final String? initialEmail;
@@ -25,6 +26,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
   late final TextEditingController _emailController;
   bool _isLoading = false;
   bool _emailSent = false;
+  String? _submittedEmail;
   String? _errorMessage;
 
   @override
@@ -40,7 +42,10 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
   }
 
   Future<void> _handleResetPassword() async {
+    if (_isLoading || _emailSent) return;
     if (!_formKey.currentState!.validate()) return;
+    final email = _emailController.text.trim();
+    FocusScope.of(context).unfocus();
 
     setState(() {
       _isLoading = true;
@@ -48,20 +53,19 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
     });
 
     try {
-      await AuthService().sendPasswordResetEmail(
-        email: _emailController.text.trim(),
-      );
+      await AuthService().sendPasswordResetEmail(email: email);
       if (mounted) {
         setState(() {
           _isLoading = false;
           _emailSent = true;
+          _submittedEmail = email;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = AuthService().getReadableErrorMessage(e);
+          _errorMessage = AuthService().getPasswordResetErrorMessage(e);
         });
       }
     }
@@ -110,7 +114,9 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                   decoration: BoxDecoration(
                     color: AppColors.paid.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.paid.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.paid.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: const Icon(
                     Icons.mark_email_read_rounded,
@@ -120,7 +126,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Reset Link Sent!',
+                  'Check Your Email',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -130,7 +136,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'We sent a password reset link to\n${_emailController.text.trim()}.\nPlease check your inbox or spam folder.',
+                  'If an account exists for\n$_submittedEmail, you will receive a password reset link.\nCheck your inbox or spam folder, then follow the link to choose a new password.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.textSecondary,
@@ -195,7 +201,10 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close_rounded, color: AppColors.textMuted),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: AppColors.textMuted,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -204,7 +213,10 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
 
                 if (_errorMessage != null) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.absent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
@@ -214,8 +226,11 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded,
-                            color: AppColors.absent, size: 18),
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.absent,
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -239,7 +254,12 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                     children: [
                       TextFormField(
                         controller: _emailController,
+                        enabled: !_isLoading,
                         keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.done,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        onFieldSubmitted: (_) => _handleResetPassword(),
                         autofillHints: const [AutofillHints.email],
                         style: TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
@@ -254,11 +274,16 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                           fillColor: AppColors.surfaceElevated,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: AppColors.surfaceBorder),
+                            borderSide: BorderSide(
+                              color: AppColors.surfaceBorder,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: AppColors.primary,
+                              width: 1.5,
+                            ),
                           ),
                           errorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -266,16 +291,17 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                           ),
                           focusedErrorBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: AppColors.absent, width: 1.5),
+                            borderSide: BorderSide(
+                              color: AppColors.absent,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter your email';
                           }
-                          final emailRegex =
-                              RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$');
-                          if (!emailRegex.hasMatch(value.trim())) {
+                          if (!isValidEmailAddress(value)) {
                             return 'Please enter a valid email';
                           }
                           return null;
